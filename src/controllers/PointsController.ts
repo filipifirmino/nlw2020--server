@@ -17,7 +17,14 @@ class PointsController{
         .distinct()
         .select('points.*')
 
-        return response.json(points)
+        const serializedItems = points.map(point=> {
+            return{
+                ...point,
+                image_url: `http://192.168.15.185:3333/${point.image}`
+            }
+        })
+
+        return response.json(serializedItems)
     }
     //Show data only a collect point
     async show(request:Request, response:Response){
@@ -29,12 +36,18 @@ class PointsController{
             return response.status(400).json({message:'Point not fund.'})
         }
 
+        const serializedPoint = {
+                ...point,
+                image_url:`http://192.168.15.185:3333/${point.image}`
+            
+        }
+
         const items  = await knex('items')
         .join('point_items','items.id', '=','point_items.item_id')
         .where('point_items.point_id',id_point)
         .select('items.title')
 
-        return  response.json({point, items})
+        return  response.json({point: serializedPoint, items})
     }
     //Create Collect point
     async create (request:Request,response:Response){
@@ -52,7 +65,7 @@ class PointsController{
     
         const trx = await knex.transaction()
         const point =  {
-            image: 'https://image.freepik.com/vetores-gratis/comercio-eletronico-conjunto-de-icones_24877-50229.jpg', //alterar
+            image:request.file.filename,
             name,
             email,
             whatsapp,
@@ -64,7 +77,12 @@ class PointsController{
         }
         const ids = await trx('points').insert(point)
         const point_id = ids[0]
-        const pointItems = items.map((item_id:number)=>{
+        const pointItems = items
+        .split(',')
+        .map((item:string) => Number(item.trim()))
+        .map((item_id:number)=>{
+
+
             return{
                 item_id,
                 point_id
